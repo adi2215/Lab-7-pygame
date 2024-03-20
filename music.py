@@ -1,35 +1,75 @@
 import pygame
-from datetime import datetime
+import os
 
+pygame.mixer.init()
 pygame.init()
-
-running = True
+screen = pygame.display.set_mode((1280, 600))
+pygame.display.set_caption("Музыкальный проигрыватель")
 clock = pygame.time.Clock()
+done = False
+songs = []
 
-window_width, window_height = 1380, 1060
-screen = pygame.display.set_mode((window_width, window_height))
+folder_path = 'music'
+files_list = os.listdir(folder_path)
 
-bg_image = pygame.image.load('images/mainclock.png')
-left_hand = pygame.image.load('images/rightarm.png')
-right_hand = pygame.image.load('images/leftarm.png')
-rect = bg_image.get_rect(center=(window_width // 2, window_height // 2))
+for file_name in files_list:
+    file_path = os.path.join(folder_path, file_name)
+    if os.path.isfile(file_path):
+        songs.append(file_path)
 
-while running:
-    screen.blit(bg_image, (0,0))
+pygame.mixer.music.load(songs[0])
+pygame.mixer.music.play()
+current_song_index = 0
+paused = False
+
+font = pygame.font.Font( None, 36)
+
+
+instruction_text = [
+    "Используйте стрелки '<' и '>' для переключения между песнями.",
+    "Нажмите пробел для паузы/продолжения проигрывания.",
+    "Программа автоматически переключает на следующую песню после окончания текущей."
+]
+
+while not done:
+    screen.fill((255, 255, 255))
+    pygame.draw.rect(screen, (200, 200, 200), pygame.Rect(50, 50, 400, 50))  
+
+    current_song_text = font.render("Текущая песня: " + songs[current_song_index], True, (0, 0, 0))
+    screen.blit(current_song_text, (60, 60))
+
+    for idx, line in enumerate(instruction_text):
+        instruction = font.render(line, True, (128, 5, 5))
+        screen.blit(instruction, (60, 150 + idx * 40))
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            done = True
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT:
+                current_song_index = (current_song_index + 1)
+                pygame.mixer.music.load(songs[current_song_index])
+                pygame.mixer.music.play()
+                paused = False
+            elif event.key == pygame.K_LEFT:
+                current_song_index = (current_song_index - 1)
+                pygame.mixer.music.load(songs[current_song_index])
+                pygame.mixer.music.play()
+                paused = False
+            elif event.key == pygame.K_SPACE:
+                if paused:
+                    pygame.mixer.music.unpause()
+                    paused = False
+                else:
+                    pygame.mixer.music.pause()
+                    paused = True
 
-    time = datetime.now().time()
+    if not pygame.mixer.music.get_busy() and not paused:
+        current_song_index = (current_song_index + 1) % len(songs)
+        pygame.mixer.music.load(songs[current_song_index] )
+        pygame.mixer.music.play()
 
-    left_angle = -(time.second * 6)
-    rotate_left = pygame.transform.rotate(left_hand, left_angle)
-    left_rect = rotate_left.get_rect(center = rect.center)
-    screen.blit(rotate_left, left_rect.topleft)
-
-    right_angle = -(time.minute * 6)
-    rotate_right = pygame.transform.rotate(right_hand, right_angle)
-    right_rect = rotate_right.get_rect(center = rect.center)
-    screen.blit(rotate_right, right_rect.topleft)
     pygame.display.flip()
     clock.tick(60)
+
+pygame.quit()
